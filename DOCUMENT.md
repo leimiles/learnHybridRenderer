@@ -2,9 +2,9 @@
 
 ####  简介
 
-Hybrid Renderer 提供了用来渲染 ECS 的 Entity 的条件，可以将 Entity 渲染出来，它并不是渲染管线；本质上它是一个 system，这个 system 集合了用来渲染 ECS Entities 所需要的数据，并且将这些数据发送给当前的渲染管线中
+Hybrid Renderer 提供了用来渲染 ECS 的 Entity 的环境，可以将 Entity 渲染出来，它并不是渲染管线；本质上它是 system，这个 system 收集了用来渲染 ECS Entities 所需要的数据，并且将这些数据发送给当前的渲染管线中
 
-Hybrid Renderer 的作用就是将 DOTS 与当前的渲染管线逻辑关联起来，这样就可以使用 ECS Entity 来代替传统的 GameObject，从而大幅度优化运行时的内存状态与性能表现
+Hybrid Renderer 的作用就是将 DOTS 与当前的渲染管线逻辑关联起来，这样就可以使用 ECS Entity 来代替传统的 GameObject 的渲染，从而大幅度优化运行时的内存状态与性能表现
 
 Hybrid Renderer 包含多个 systems，能够将 GameObjects 转换成对应的 DOTS entities. 可以在 Editor 端进行转换，也可以在 runtime 下进行转换，前者则会在场景加载上表现的更好
 
@@ -75,7 +75,43 @@ URP 项目，必须启用 SRP Batcher
 
 Hybrid Renderer 不支持 gamma space
 
-#### Hybrid Renderer 的特性
+### Hybrid Renderer 的特性
+
+#### 材质重写 material overrides (properties)
+
+即可以在渲染时，重新为材质的属性赋值，有两种主要的方式能够做到这一点
+
+1, 使用 c# / brust code
+可以编写 c# / burst 来设置并且动态地 （animated material）改变基于每个 entity 来重新材质的属性值. 能够被重写的材质包括 URP/ HDRP 的默认材质，以及自定义的 shader graph 材质，对于自定义材质 (shader graph) 需要在属性的的 node settings 中启用 "override property declaration" 并且将 "shader declaration" 的值设置为 "hybrid per instance"
+
+IComponentData，用以定义用来重写的的属性值，需要使用 material property 的属性来修饰该结构体，如下
+
+```
+[MaterialProperty("_Color"), MaterialPropertyFormat.Float4]
+public struct MyOwnColor : IComponentData {
+    public float4 colorValue;
+}
+```
+这里需要确保自定义 shader graph 中属性索引的名称 "_Color" ，与 MaterialProperty 中的名称保持一致，MaterialPropertyFormat 的类型，要与 shader graph 中的属性类型保持兼容，例如 float4 兼容 half4，如果 size 不匹配则会报错
+
+定义了数据后，可以编写用来编辑数据的 system
+
+```
+class AnimateMyOwnColorSystem : SystemBase {
+    protected override void OnUpdate() {
+        Entities.ForEach((ref MyOwnColor color, in MyAnimationTime t) => {
+            color.Value = new float4(
+                math.cos(t.Value + 1.0f),
+                math.cos(t.Value + 2.0f),
+                math.cos(t.Value + 3.0f),
+                1.0f
+            );
+        }).Schedule();
+    }
+}
+```
+
+注意，每一个需要被 override 的 property 都需要构建对应的 IComponentData，并且这些属性都需要开启 Hybrid Instanced，如果漏掉 Hybrid Renderer V2 会 将这些属性的值用 0 来填充
 
 
 

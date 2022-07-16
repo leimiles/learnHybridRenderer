@@ -1,6 +1,6 @@
-### Hybrid Renderer 0.51-0
+## Hybrid Renderer 0.51-0
 
-####  简介
+###  简介
 
 Hybrid Renderer 提供了用来渲染 ECS 的 Entity 的环境，可以将 Entity 渲染出来，它并不是渲染管线；本质上它是 system，这个 system 收集了用来渲染 ECS Entities 所需要的数据，并且将这些数据发送给当前的渲染管线中
 
@@ -24,7 +24,7 @@ Hybrid Renderer 会处理所有带有 LocalToWorld，RenderMesh，RenderBounds c
 
 注意：如果在 runtime 情况下像场景中添加 entities，最好是通过 instantiate prefab 的方式，而非新建一个 entity. 由于 hybrid renderer 会频繁更新，所以最好的实践方式是使用 conversion pipeline 以及 prefabs，而非手动重新创建 entities，这样做能够避免 hybrid renderer 升级带来的兼容性问题
 
-#### 要求与兼容性
+### 要求与兼容性
 
 >* built-in，不支持
 >* HDRP，HDRP 9.0+ 以及 unity 2020.1+
@@ -65,7 +65,7 @@ Hybrid Renderer 在 URP 特性上的将来会支持包括
 >* LOD Crossfade
 >* Viewport shader overrides
 
-#### 添加 Hybrid Renderer
+### 添加 Hybrid Renderer
 
 Hybrid Renderer 不能通过 package manager 添加，必须通过修改 manifest.json 文件来添加
 
@@ -81,7 +81,7 @@ Hybrid Renderer 不支持 gamma space
 
 即可以在渲染时，重新为材质的属性赋值，有两种主要的方式能够做到这一点
 
-1, 使用 c# / brust code
+1，使用 c# / brust code
 可以编写 c# / burst 来设置并且动态地 （animated material）改变基于每个 entity 来重新材质的属性值. 能够被重写的材质包括 URP/ HDRP 的默认材质，以及自定义的 shader graph 材质，对于自定义材质 (shader graph) 需要在属性的的 node settings 中启用 "override property declaration" 并且将 "shader declaration" 的值设置为 "hybrid per instance"
 
 IComponentData，用以定义用来重写的的属性值，需要使用 material property 的属性来修饰该结构体，如下
@@ -113,5 +113,50 @@ class AnimateMyOwnColorSystem : SystemBase {
 
 注意，每一个需要被 override 的 property 都需要构建对应的 IComponentData，并且这些属性都需要开启 Hybrid Instanced，如果漏掉 Hybrid Renderer V2 会 将这些属性的值用 0 来填充
 
+2，使用 material override asset 这是非代码的方式
 
+对应自定义的 shader graph，还是要保证属性开启 hybride per instanced
+
+创建 material override asset，assets > create > shader > material override asset
+
+把目标材质放在 asset 中，添加需要 override 的 property 并设置 override value，这一步操作会自动创建 c# script 并于 material 处在相同目录，可以不同管它
+
+选中场景中使用该材质的的 gameobject，添加 component (material override) 并将 material override asset 添加给该脚本，该 asset 也可以复用给其他的需要被 override 的 gameobject，只要 material 匹配，这种情况下，如果修改 asset，则所有使用该 asset 的 material 都会被 override，如果是在 gameobject 的 inspector 中修改某一个 material override 的属性，则会再次覆盖，表示该 gameobject 的这个属性不使用 asset 中的值
+
+### Hybrid entities
+
+是一个 DOTS 特性，它能够允许你将一个 mono 组件 attach 给一个 dots entities，而不需要将该 mono 转换成 IComponentData，conversion system 会调用 AddHybridComponent 来连接 component 到 dots entity
+
+以下是 hybrid renderer 中已经支持的与图形渲染相关的 component
+
+>* Light + UniversalAddtionalLightData
+>* TextMesh
+>* SpriteRenderer
+>* VisualEffect
+>* DecalProjector (HDRP)
+>* DensityVolume (HDRP)
+>* PlanarReflectionProbe (HDRP)
+>* Volume
+>* Volume + Sphere/Box/Capsule/Mesh Collider pair
+
+注意，camera (HDAdditionalCameraData，UniversalAdditionalCameraData) 默认情况下是 disabled 的，因为场景的 main camera 不可以成为 hybrid entity，如果要启用 conversion，需要在 project settings 中定义一个 HYBRID_ENTITIES_CAMERA_CONVERSION
+
+只要 hybrid entity 更新了 DOTS LocalToWorld component，unity 也会同时更新 hybrid entity 的 transform，可以将一个 hybrid entity 挂接给另一个标准 dots entity 作为子元素，hybrid entities 可以被包含在 dots subscenes 中，components 会在被序列化
+
+可以写 dots ecs queries 同时包含 IComponentData 和 hybrid component，然而这种情况下 queries 就无法 burst compile 并且必须在主线程执行，因为 hybrid component 不是 thread safe 的. 需要使用 WithoutBurst() 方法，以及使用 .Run() 来代替 .Schedule()
+
+下面的例子，是设置 HDRP Light 强度的 system
+```
+class AnimatedHDRPIntensitySystem : SystemBase {
+    protected override void OnUpdate() {
+        Entities.WithoutBurst().ForEach(
+            (HDLightAdditionalData hdLight) => {
+                hdLight.intensity = 1.5f;
+            }
+        ).Run();
+    }
+}
+```
+
+### The BatchRendererGroup API
 

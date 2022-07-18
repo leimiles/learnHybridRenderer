@@ -2,13 +2,20 @@
 
 ###  简介
 
+
+文档主页: https://docs.unity3d.com/Packages/com.unity.rendering.hybrid@0.51/manual/index.html
+
+测试项目(HDRP): https://github.com/Unity-Technologies/EntityComponentSystemSamples/tree/master/HybridHDRPSamples
+
+测试项目(URP): https://github.com/Unity-Technologies/EntityComponentSystemSamples/tree/master/HybridURPSamples
+
 Hybrid Renderer 提供了用来渲染 ECS 的 Entity 的环境，可以将 Entity 渲染出来，它并不是渲染管线；本质上它是 system，这个 system 收集了用来渲染 ECS Entities 所需要的数据，并且将这些数据发送给当前的渲染管线中
 
 Hybrid Renderer 的作用就是将 DOTS 与当前的渲染管线逻辑关联起来，这样就可以使用 ECS Entity 来代替传统的 GameObject 的渲染，从而大幅度优化运行时的内存状态与性能表现
 
 Hybrid Renderer 包含多个 systems，能够将 GameObjects 转换成对应的 DOTS entities. 可以在 Editor 端进行转换，也可以在 runtime 下进行转换，前者则会在场景加载上表现的更好
 
-如果需要在 editor 段转换，需要他们放在一个 subscene 中，editor 会执行转换并将结果保存在磁盘上，如果要在 runtime 时转换，则需要添加 ConvertToEntity 的组件给到要被转换的 GameObjects
+如果需要在 editor 端转换，需要他们放在一个 subscene 中，editor 会执行转换并将结果保存在磁盘上，如果要在 runtime 时转换，则需要添加 ConvertToEntity 的组件给到要被转换的 GameObjects
 
 转换的过程中 unity 的主要步骤如下
 
@@ -159,4 +166,41 @@ class AnimatedHDRPIntensitySystem : SystemBase {
 ```
 
 ### The BatchRendererGroup API
+
+就算项目有使用 hybrid renderer，也不代表就需要与该 api 发生交互，只是如果要做一些高级定制的渲染流程，需要基于该 api 进行功能封装，目前该 api 是 experimental 并且频繁更新，稳定性无法保证
+
+注意: 下面 APIs 对应的链接可能会被 unity 更新
+
+通用 APIs:
+>* AddBatch https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.AddBatch.html
+>* RemoveBatch https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.RemoveBatch.html
+>* GetNumBatches https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetNumBatches.html
+>* SetBatchBounds https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.SetBatchBounds.html
+>* SetBatchFlags https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.SetBatchFlags.html
+>* SetInstancingData(MaterialPropertyBlock) (WIP，don't use)
+
+hybrid renderer v1 APIs:
+>* GetBatchMatrices https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchMatrices.html
+>* GetBatchMatrixArray https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchMatrixArray.html
+>* GetBatchScalarArray https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchScalarArray.html
+>* GetBatchScalarArrayInt https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchScalarArrayInt.html
+>* GetBatchVectorArray https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchVectorArray.html
+>* GetBatchVectorArrayInt https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.GetBatchVectorArrayInt.html
+
+hybrid renderer v2 APIs:
+>* SetBatchPropertyMetadata https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Rendering.BatchRendererGroup.SetBatchPropertyMetadata.html
+
+不要使用 SetInstancingData 来设置 unity shader 的 input，需要结合 GetBatch + Matrices / Scalar / Vector 的形式 (这里会返回 native arrays，在这里填入每个 instance 绘制所需要的数据，数据类型为 persistent，如果没有 change 就不需要 rewrite)，或者使用 SetBatchPropertyMetadata 的 APIs
+
+如果使用 SetBatchPropertyMetadata 的 API ，需要通过下面几个步骤
+
+>* 首先需要调用 HybridV2ShaderReflection.GetDOTSInstancingCbuffers (https://docs.unity3d.com/2020.1/Documentation/ScriptReference/Unity.Rendering.HybridV2.HybridV2ShaderReflection.GetDOTSInstancingCbuffers.html) 
+
+
+
+
+
+
+
+
 

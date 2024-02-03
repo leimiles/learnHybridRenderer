@@ -1,0 +1,9 @@
+.DS_Store
+Build
+Library
+Logs
+Temp
+Build_BurstDebugInformation_DoNotShip
+UserSettings
+*.csproj
+*.sln

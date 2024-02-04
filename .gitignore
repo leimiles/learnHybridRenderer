@@ -10,3 +10,5 @@ UserSettings
 Packages/packages-lock.json
 Packages/com.unity.render-pipelines.universal@14.0.9
 Assets/SceneDependencyCache
+obj
+.vscode
